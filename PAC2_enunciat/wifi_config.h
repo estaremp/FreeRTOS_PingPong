@@ -35,13 +35,13 @@
 /*----------------------------------------------------------------------------*/
 
 #define HOME_WLAN                   ( 0 )
-#define HOME_SSID                   ( "XXXXXXXXX" )
-#define HOME_SEC_KEY                ( "XXXXXXXXX" )
+#define HOME_SSID                   ( "elecom2g-eaf935" )
+#define HOME_SEC_KEY                ( "vd8m6366fxm5" )
 #define HOME_SEC_TYPE               ( SL_SEC_TYPE_WPA_WPA2 )
 
 #define WORK_WLAN                   ( 1 )
-#define WORK_SSID                   ( "XXXXXXXXX" )
-#define WORK_SEC_KEY                ( "XXXXXXXXX" )
+#define WORK_SSID                   ( "elecom2g-eaf935" )
+#define WORK_SEC_KEY                ( "vd8m6366fxm5" )
 #define WORK_SEC_TYPE               ( SL_SEC_TYPE_WPA_WPA2 )
 
 #define WIFI_NETWORK                ( WORK_WLAN )

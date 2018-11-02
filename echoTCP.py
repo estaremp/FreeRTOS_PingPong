@@ -1,6 +1,6 @@
 import socket
 
-TCP_IP = 'xxx.xxx.xxx.xxx'
+TCP_IP = '192.168.2.101'
 TCP_PORT = 5005
 BUFFER_SIZE = 256  # Normally 1024, but we want fast response
 

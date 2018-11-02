@@ -62,7 +62,7 @@
 #define MAIN_STACK_SIZE             ( 1024 )
 #define BLINK_STACK_SIZE            ( 128 )
 
-#define SERVER_ADDRESS              ( "xxx.xxx.xxx.xxx")
+#define SERVER_ADDRESS              ( "192.168.2.101")
 #define SERVER_PORT                 ( 5005 )
 #define BUFFER_SIZE                 ( 16 )
 #define PING_NUMBER                 ( 10  )
@@ -175,9 +175,9 @@ static void MainTask(void *pvParameters) {
 int main(int argc, char** argv)
 {
     int32_t retVal = -1;
-
     /* Initialize the board */
     board_init();
+
     /* Set up Command Line Interface (UART) */
     CLI_Configure();
 
