@@ -57,9 +57,11 @@
 
 #define SPAWN_TASK_PRIORITY         ( tskIDLE_PRIORITY + 6 )
 #define MAIN_TASK_PRIORITY          ( tskIDLE_PRIORITY + 2 )
+#define PP_TASK_PRIORITY            ( tskIDLE_PRIORITY + 1 )
 #define BLINK_TASK_PRIORITY         ( tskIDLE_PRIORITY + 1 )
 
 #define MAIN_STACK_SIZE             ( 1024 )
+#define PP_STACK_SIZE               ( 1024 )
 #define BLINK_STACK_SIZE            ( 128 )
 
 #define SERVER_ADDRESS              ( "192.168.2.101")
@@ -71,9 +73,13 @@
 
 static void BlinkTask(void *pvParameters);
 static void MainTask(void *pvParameters);
-
+static void PPTask(void *pvParameters);
 
 /*----------------------------------------------------------------------------*/
+
+// Declaracion de un mutex
+SemaphoreHandle_t mutSOCKET;
+int16_t socket_id = -1;
 
 static void BlinkTask(void *pvParameters) {
     while(true)
@@ -94,14 +100,13 @@ static void BlinkTask(void *pvParameters) {
 
 static void MainTask(void *pvParameters) {
     int16_t retVal = -1;
-    int16_t socket_id = -1;
-    uint32_t ping_counter = 0;
     SlSockAddrIn_t Addr;
     int ip_address;
-    uint8_t txBuffer[BUFFER_SIZE];
-    uint8_t rxBuffer[BUFFER_SIZE];
     char message[50];
 
+    // Intenta coger el mutex, bloqueandose si no esta disponible
+    xSemaphoreTake( mutSOCKET, portMAX_DELAY );{
+    CLI_Write(" Som a TASK1. \n\r");
 
     /* Initialize Wi-Fi */
     retVal = wifi_init();
@@ -122,16 +127,53 @@ static void MainTask(void *pvParameters) {
 
     /* Create TCP socket */
     while (socket_id < 0){
+
         socket_id =  wifi_tcp_client_open(&Addr);
+        sprintf(message, "Socket ID creat. Alliberem Mutex. \n\r", socket_id);
+        CLI_Write((unsigned char*) message);
+
         if (socket_id < 0) {
             led_red_on();
-        CLI_Write(" Failed to create TCP socket. \n\r");
+            CLI_Write(" Failed to create TCP socket. \n\r");
         }
+        xSemaphoreGive( mutSOCKET );
+    }
+        CLI_Write ("Task1 frees the mutex for Task 2. \n\r");
         vTaskDelay(pdMS_TO_TICKS(1000));
     }
 
+    // Intenta coger el mutex, bloqueandose si no esta disponible
+    xSemaphoreTake( mutSOCKET, portMAX_DELAY );{
+
+    CLI_Write ("Task1 has the mutex to close socket. \n\r");
+    retVal = wifi_client_close(socket_id);
+    if (retVal <0){
+        led_red_on();
+        CLI_Write(" Failed to close TCP socket. \n\r");
+    }
+    CLI_Write ("PING PONG finished!");
+
+    }
+
+}
+
+static void PPTask(void *pvParameters) {
+    int16_t retVal = -1;
+    uint8_t txBuffer[BUFFER_SIZE];
+    uint8_t rxBuffer[BUFFER_SIZE];
+    uint32_t ping_counter = 0;
+    char message[50];
+
+
+    // Intenta coger el mutex, bloqueandose si no esta disponible
+    xSemaphoreTake( mutSOCKET, portMAX_DELAY );
+    {
+    CLI_Write(" TASK2 has the mutex. \n\r");
+
     while(ping_counter < PING_NUMBER)
     {
+        CLI_Write(" TASK2-while. \n\r");
+
         /* Turn green LED on */
         led_green_on();
 
@@ -145,6 +187,7 @@ static void MainTask(void *pvParameters) {
         }
         sprintf(message, "Sent PING %d \n\r", ping_counter);
         CLI_Write((unsigned char*) message);
+
         /* Increase counter */
         ping_counter++;
         /* Turn green LED off */
@@ -153,27 +196,30 @@ static void MainTask(void *pvParameters) {
         /* Receive TCP packet */
         retVal = -1;
         while (retVal<1){
+            //CLI_Write(" TASK2-waiting for Pong. \n\r");
             retVal = wifi_tcp_client_receive(socket_id, rxBuffer,  BUFFER_SIZE);
         }
+
         rxBuffer[retVal] = '\0';
         CLI_Write(rxBuffer); CLI_Write("\n\r");
 
-        /* Sleep for 1000 ms */
-        vTaskDelay(pdMS_TO_TICKS(1000));
+    }
+    xSemaphoreGive( mutSOCKET );
+    CLI_Write(" TASK2-freed mutex. \n\r");
+    /* Sleep for 1000 ms */
+    vTaskDelay(pdMS_TO_TICKS(1000));
     }
 
-    retVal = wifi_client_close(socket_id);
-    if (retVal <0){
-        led_red_on();
-        CLI_Write(" Failed to close TCP socket. \n\r");
-    }
-    CLI_Write ("PING PONG finished!");
 }
-
 /*----------------------------------------------------------------------------*/
 
-int main(int argc, char** argv)
-{
+int main(int argc, char** argv){
+    // Inicializacion del mutex
+    mutSOCKET = xSemaphoreCreateMutex();
+
+    // Comprueba si semaforo y mutex se han creado bien
+    if (mutSOCKET!=NULL)
+    {
     int32_t retVal = -1;
     /* Initialize the board */
     board_init();
@@ -188,19 +234,19 @@ int main(int argc, char** argv)
         led_red_on();
         while(1);
     }
-
+    CLI_Write(" MAIN. \n\r");
     /* Create blink task */
-    retVal = xTaskCreate(BlinkTask,
-                         "BlinkTask",
-                         BLINK_STACK_SIZE,
-                         NULL,
-                         BLINK_TASK_PRIORITY,
-                         NULL );
-    if(retVal < 0)
-    {
-        led_red_on();
-        while(1);
-    }
+    //retVal = xTaskCreate(BlinkTask,
+     //                    "BlinkTask",
+     //                    BLINK_STACK_SIZE,
+     //                    NULL,
+     //                    BLINK_TASK_PRIORITY,
+     //                    NULL );
+    //if(retVal < 0)
+    //{
+    //    led_red_on();
+    //    while(1);
+    //}
 
     /* Create main task */
     retVal = xTaskCreate(MainTask,
@@ -215,8 +261,23 @@ int main(int argc, char** argv)
         while(1);
     }
 
+    /* Create main task */
+    retVal = xTaskCreate(PPTask,
+                         "PPTask",
+                         PP_STACK_SIZE,
+                         NULL,
+                         PP_TASK_PRIORITY,
+                         NULL );
+
+    if(retVal < 0)
+    {
+        led_red_on();
+        while(1);
+    }
+
     /* Start the task scheduler */
     vTaskStartScheduler();
+    }
 
     return 0;
 }
