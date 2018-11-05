@@ -62,8 +62,8 @@
 #define BLINK_TASK_PRIORITY         ( tskIDLE_PRIORITY + 1 )
 
 #define MAIN_STACK_SIZE             ( 1024 )
-#define SND_STACK_SIZE               ( 1024 )
-#define RCV_STACK_SIZE               ( 1024 )
+#define SND_STACK_SIZE              ( 1024 )
+#define RCV_STACK_SIZE              ( 1024 )
 #define BLINK_STACK_SIZE            ( 128 )
 
 #define SERVER_ADDRESS              ( "192.168.2.101")
@@ -140,6 +140,7 @@ static void MainTask(void *pvParameters) {
             led_red_on();
             CLI_Write(" Failed to create TCP socket. \n\r");
         }
+        /* Libera el mutex */
         xSemaphoreGive( mutSOCKET );
     }
         vTaskDelay(pdMS_TO_TICKS(1000));
@@ -232,7 +233,7 @@ static void RCVTask(void *pvParameters) {
 
     /* Increase counter */
     ping_counter++;
-;
+
     if (ping_counter==PING_NUMBER) {
 
         /* Release the sempahore to close connection */
